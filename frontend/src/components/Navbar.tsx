@@ -18,15 +18,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="navbar">
       <div className="container navbar-inner">
-        <div 
-          className="brand-logo" 
-          style={{ cursor: 'pointer' }} 
+        <button
+          className="brand-logo"
+          type="button"
+          aria-label="Return to FurniAI home"
           onClick={() => setActiveTab('home')}
         >
-          <span style={{ fontSize: '1.8rem' }}>🛋️</span>
-          <span>Furni<span style={{ color: 'var(--accent-primary)' }}>AI</span></span>
-          <span className="brand-badge">MODULAR MONOLITH</span>
-        </div>
+          <img className="brand-logo-image" src="/furniai-logo.png" alt="FurniAI" />
+        </button>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
