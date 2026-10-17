@@ -1,150 +1,167 @@
 # FurniAI
 
-> An AI-powered furniture commerce platform that combines grounded product intelligence with reliable e-commerce workflows.
-
-FurniAI is a portfolio-grade modular monolith built to show how AI can improve discovery without taking authority away from the application. A shopper can search naturally, inspect why products ranked highly, ask grounded product questions, add items to a cart, and complete an approval-aware checkout flow.
+> AI-assisted furniture discovery and commerce, built around explainable search and authoritative business workflows.
 
 ![FurniAI storefront](frontend/src/assets/hero.png)
 
-## Why this project stands out
+## Project overview
 
-- **Hybrid product discovery:** lexical and semantic search are combined into a deterministic ranking formula.
-- **Explainable results:** every ranked product exposes semantic, keyword, rating, and price contributions.
-- **Grounded AI assistant:** LangGraph orchestrates constrained backend tools; PostgreSQL remains authoritative.
-- **Production-minded commerce flows:** inventory checks, transactional checkout, Redis-backed idempotency, and request observability.
-- **Clear architecture:** a modular monolith keeps the system understandable while separating API, services, persistence, and agent layers.
+FurniAI is a full-stack furniture commerce application designed around a practical question: how can an AI assistant make shopping more useful without becoming the system of record?
+
+The platform lets a shopper describe what they want in natural language, discover ranked products, understand why those products were recommended, ask questions grounded in product knowledge, manage a cart, and complete a controlled checkout flow. The interface is conversational where it adds value, while catalog, inventory, pricing, and order state remain governed by backend business logic.
+
+This project is implemented as a modular monolith. That keeps the domain in one deployable system while preserving clear boundaries between the web experience, API layer, application services, persistence, search, and AI orchestration.
+
+## What the system demonstrates
+
+| Area | Implementation focus |
+| --- | --- |
+| Product discovery | Lexical, semantic, and hybrid search over the furniture catalog |
+| Explainability | Search results expose the individual ranking signals behind the final score |
+| Product intelligence | RAG-style retrieval over product-specific knowledge chunks |
+| AI orchestration | LangGraph agent with structured state and constrained backend tools |
+| Commerce | Users, carts, inventory, warehouses, reservations, orders, and shipments |
+| Reliability | PostgreSQL authority, Redis caching, idempotency support, and request metadata |
+| Frontend | React and TypeScript storefront with search, product, cart, and order experiences |
 
 ## Architecture
 
 ```text
-React + TypeScript
-        │
-        ▼
-FastAPI API ─────── LangGraph shopping assistant
-        │                         │
-        ├── Application services ◄┘
-        │       │
-        │       ├── PostgreSQL + pgvector  (source of truth)
-        │       └── Redis                  (cache + idempotency)
-        │
-        └── deterministic hybrid ranking
+┌──────────────────────────────┐
+│ React + TypeScript storefront│
+└──────────────┬───────────────┘
+               │ HTTP / JSON
+┌──────────────▼───────────────┐
+│ FastAPI modular monolith     │
+│  API routes                  │
+│  Application services        │
+│  Deterministic search        │
+│  LangGraph agent + tools     │
+└───────┬──────────┬───────────┘
+        │          │
+┌───────▼──────┐ ┌─▼──────────────┐
+│ PostgreSQL   │ │ Redis          │
+│ + pgvector   │ │ cache/idempot. │
+└──────────────┘ └────────────────┘
 ```
 
-The ranking score is intentionally inspectable:
+PostgreSQL is the authoritative store for business data. Redis is deliberately limited to supporting concerns such as caching and idempotency. The language model does not directly access the database; it requests structured tool operations, and the application services validate and execute them.
+
+## Main user journey
+
+1. A shopper describes a need such as a wooden study desk for a compact room.
+2. The backend runs lexical and semantic retrieval against the catalog.
+3. A deterministic Python ranker combines the retrieval signals with rating and price preference.
+4. The UI presents the products and the score breakdown, making the result inspectable.
+5. Product knowledge retrieval supplies grounded answers about care, materials, dimensions, and usage.
+6. Cart, inventory, warehouse, and order services handle the transaction through normal backend rules.
+7. Checkout is approval-aware and protected against duplicate requests with idempotency support.
+
+## Explainable hybrid ranking
+
+The final ranking is intentionally deterministic rather than delegated to the LLM:
 
 ```text
-0.50 × semantic similarity
-+ 0.20 × keyword relevance
-+ 0.15 × normalized rating
-+ 0.15 × price preference
+final score =
+    0.50 × semantic similarity
+  + 0.20 × keyword relevance
+  + 0.15 × normalized rating
+  + 0.15 × price preference
 ```
 
-## Quick start
+This makes the system easier to test, tune, and explain. The frontend can display the component scores, while the backend remains responsible for the final ordering.
 
-### Prerequisites
+## AI assistant design
 
-- Docker Desktop with Compose
-- Node.js 20+
-- Python 3.10+
-- A Groq API key for the AI assistant (optional for non-AI catalog flows)
+The assistant uses LangGraph to manage conversation state, tool calls, and human approval. Its available capabilities are deliberately narrow:
 
-### 1. Configure the backend
+- search products
+- compare products
+- retrieve product knowledge
+- check inventory and delivery information
+- request checkout after approval
 
-```bash
-cp backend/.env.example backend/.env
+The agent is an orchestration layer, not a business authority. Product availability, prices, inventory reservations, and order creation are resolved by backend services and the database.
+
+## Technology stack
+
+- **Frontend:** React, TypeScript, Vite
+- **API:** Python, FastAPI, Pydantic
+- **Persistence:** PostgreSQL, SQLAlchemy, Alembic
+- **Vector retrieval:** pgvector and sentence-transformer embeddings
+- **Cache and reliability:** Redis
+- **AI workflow:** LangGraph and Groq-compatible LLM integration
+- **Operations:** Docker Compose, request IDs, response timing headers
+- **Testing:** Pytest, deterministic ranking tests, integration coverage
+
+## Repository structure
+
+```text
+backend/app/api/          HTTP route handlers
+backend/app/services/     catalog, cart, order, user, and warehouse logic
+backend/app/agent/        graph state, tools, prompts, and agent execution
+backend/app/models/       SQLAlchemy persistence models
+backend/app/schemas/      request and response contracts
+backend/alembic/          database migration history
+backend/scripts/          data generation, seeding, and search utilities
+backend/tests/            ranking, concurrency, and integration tests
+frontend/src/components/  navigation, assistant, and score UI
+frontend/src/pages/       home, search, product, cart, and order views
+frontend/src/services/    typed frontend API client
+docker-compose.yml        PostgreSQL, Redis, backend, and frontend services
 ```
 
-Add your `GROQ_API_KEY` to `backend/.env` if you want to use the assistant. The local defaults match the included Compose services.
+## API surface
 
-### 2. Start infrastructure
+The backend exposes interactive OpenAPI documentation and the following core capabilities:
 
-```bash
-docker compose up -d postgres redis
-```
-
-### 3. Install and run the API
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
-uvicorn app.main:app --reload
-```
-
-The API and interactive OpenAPI docs are available at [localhost:8000](http://localhost:8000) and [localhost:8000/docs](http://localhost:8000/docs).
-
-### 4. Run the frontend
-
-In a second terminal:
-
-```bash
-cd frontend
-npm install
-cp .env.example .env.local
-npm run dev
-```
-
-Open [localhost:5173](http://localhost:5173).
-
-### Docker shortcut
-
-After creating `backend/.env`, the full stack can be started with:
-
-```bash
-docker compose up --build
-```
-
-## API highlights
-
-| Capability | Endpoint |
+| Capability | Route |
 | --- | --- |
-| Health check | `GET /health/db` |
-| Product catalog | `GET /products/` |
-| Lexical search | `GET /products/search?q=...` |
-| Semantic search | `GET /products/semantic-search?q=...` |
-| Explainable hybrid search | `GET /products/hybrid-search?q=...` |
-| Product knowledge retrieval | `GET /products/{id}/knowledge?q=...` |
-| AI assistant | `POST /agent/chat` |
-| Cart and checkout | `/cart/*`, `/orders/*` |
+| Service and database health | `GET /`, `GET /health/db` |
+| Catalog and product detail | `GET /products/`, `GET /products/{id}` |
+| Lexical search | `GET /products/search` |
+| Semantic search | `GET /products/semantic-search` |
+| Explainable hybrid search | `GET /products/hybrid-search` |
+| Product knowledge retrieval | `GET /products/{id}/knowledge` |
+| AI shopping assistant | `POST /agent/chat` |
+| Users, cart, and checkout | `/users/*`, `/cart/*`, `/orders/*` |
+
+## Engineering decisions
+
+FurniAI intentionally uses a modular monolith instead of microservices. The goal is to demonstrate strong domain boundaries without introducing distributed-system overhead before it is needed.
+
+The project also intentionally avoids direct LLM database access, opaque recommendation decisions, custom model training, Kafka-style event infrastructure, Kubernetes, and external payment or logistics integrations. These boundaries keep the system explainable and make correctness testable.
+
+## Current status
+
+Implemented:
+
+- React storefront with product discovery, detail, cart, and order views
+- FastAPI catalog, user, cart, and order APIs
+- PostgreSQL schema with Alembic migrations
+- Lexical, semantic, and hybrid search
+- Product knowledge retrieval with vector similarity
+- LangGraph assistant with approval-aware checkout
+- Redis caching and idempotency support
+- Ranking, concurrency, and integration test coverage
+- Docker Compose development environment
+
+Planned improvements:
+
+- Browser-level Playwright coverage for the complete shopping journey
+- Authenticated sessions replacing the demo user flow
+- Structured tracing for agent tools and search latency
+- Managed deployment configuration for production infrastructure
 
 ## Verification
 
+The frontend production build and deterministic ranking tests are part of the local verification workflow. Full integration tests require the PostgreSQL and Redis services with seeded data available.
+
 ```bash
-cd frontend
-npm run lint
-npm run build
-
-cd ../backend
-pytest -q
+cd frontend && npm run lint && npm run build
+cd ../backend && pytest -q
 ```
-
-Integration tests expect the local PostgreSQL and Redis services plus seeded data to be available. The tests cover database health, observability headers, hybrid ranking, Redis-backed product retrieval, RAG knowledge retrieval, cart behavior, and the agent endpoint.
-
-## Repository layout
-
-```text
-backend/app/api/          FastAPI route handlers
-backend/app/services/     business logic and ranking
-backend/app/agent/        LangGraph state, tools, and workflow
-backend/alembic/          database migrations
-backend/tests/            unit and integration tests
-frontend/src/             React pages, components, and API client
-docker-compose.yml        PostgreSQL, Redis, API, and frontend services
-```
-
-## Design decisions
-
-FurniAI deliberately avoids microservices, Kubernetes, custom recommendation-model training, and direct database access from the LLM. The goal is a system that is explainable, testable, and easy to evolve while still demonstrating meaningful AI engineering.
-
-## Roadmap
-
-- Add Playwright browser coverage for the primary shopping journey.
-- Add structured tracing for agent tool calls and search latency.
-- Add authenticated user sessions instead of the demo user flow.
-- Add deployment manifests and a managed Postgres/Redis environment.
 
 ## License
 
-This repository is currently intended as a portfolio and technical demonstration project. Add a license before publishing if you plan to accept external contributions or reuse it commercially.
+This repository is currently a portfolio and technical demonstration project. Add a license before accepting external contributions or using it commercially.
