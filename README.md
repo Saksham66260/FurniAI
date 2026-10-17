@@ -146,22 +146,4 @@ Implemented:
 - Ranking, concurrency, and integration test coverage
 - Docker Compose development environment
 
-Planned improvements:
 
-- Browser-level Playwright coverage for the complete shopping journey
-- Authenticated sessions replacing the demo user flow
-- Structured tracing for agent tools and search latency
-- Managed deployment configuration for production infrastructure
-
-## Verification
-
-The frontend production build and deterministic ranking tests are part of the local verification workflow. Full integration tests require the PostgreSQL and Redis services with seeded data available.
-
-```bash
-cd frontend && npm run lint && npm run build
-cd ../backend && pytest -q
-```
-
-## License
-
-This repository is currently a portfolio and technical demonstration project. Add a license before accepting external contributions or using it commercially.
