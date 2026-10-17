@@ -1,0 +1,45 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+
+# IDE and operating-system files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Generated project material
+tmp/
+output/
+*.dSYM/
+*.zip
+
+# Local coursework / internal planning artifacts
+Assisment/
+*.pdf
+PROJECT_STATE.md
+FurniAI_Continuation_Handoff.md
+
+# Local database / logs
+*.sqlite3
+*.db
+*.log

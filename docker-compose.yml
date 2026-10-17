@@ -1,0 +1,79 @@
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: furniai-postgres
+
+    environment:
+      POSTGRES_DB: furniai
+      POSTGRES_USER: furniai
+      POSTGRES_PASSWORD: furniai
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U furniai -d furniai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: furniai-redis
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: furniai-backend
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - ./backend/.env
+
+    environment:
+      DATABASE_URL: postgresql+psycopg://furniai:furniai@postgres:5432/furniai
+      REDIS_URL: redis://redis:6379/0
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    container_name: furniai-frontend
+
+    ports:
+      - "5173:80"
+
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
