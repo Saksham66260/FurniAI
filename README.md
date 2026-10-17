@@ -2,7 +2,7 @@
 
 > AI-assisted furniture discovery and commerce, built around explainable search and authoritative business workflows.
 
-![FurniAI logo](frontend/public/furniai-logo.png)
+<img src="frontend/public/furniai-logo.png" width="180" alt="FurniAI logo">
 
 ## Project overview
 
